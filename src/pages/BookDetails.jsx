@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PDFReader from '../components/PDFReader'
-import { Bookmark, BookmarkCheck, Share2, Star, Calendar, BookOpen, ThumbsUp, Loader2, Flag } from 'lucide-react' // Added Flag
+import { Bookmark, BookmarkCheck, Share2, Star, BookOpen, ThumbsUp, Loader2, Flag } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function BookDetails({ session }) {
@@ -17,6 +17,9 @@ export default function BookDetails({ session }) {
 
   // Feature 2: Recommendations State
   const [relatedBooks, setRelatedBooks] = useState([]) 
+  
+  // NEW: Series State
+  const [seriesBooks, setSeriesBooks] = useState([])
 
   // Feature 4: Advanced Reviews State (Pagination + Likes)
   const [reviews, setReviews] = useState([])
@@ -45,14 +48,26 @@ export default function BookDetails({ session }) {
     const { data: bookData } = await supabase.from('novels').select('*').eq('id', id).single()
     setBook(bookData)
 
-    // 2. Fetch Related Books (Recommendations)
     if (bookData) {
+      // 2a. NEW: Fetch Series Books
+      if (bookData.series_name) {
+        const { data: sBooks } = await supabase
+          .from('novels')
+          .select('id, title, cover_url, series_order, series_name')
+          .eq('series_name', bookData.series_name)
+          .neq('id', id) // Don't show current book
+          .order('series_order', { ascending: true })
+
+        setSeriesBooks(sBooks || [])
+      }
+
+      // 2b. Fetch Related Books (Recommendations) - Same Genre, different series usually preferred, but simple genre match here
       const { data: related } = await supabase
         .from('novels')
         .select('id, title, cover_url, author')
         .eq('genre', bookData.genre) 
-        .neq('id', id)               
-        .limit(4)                    
+        .neq('id', id)              
+        .limit(4)                   
       setRelatedBooks(related || [])
     }
 
@@ -137,7 +152,6 @@ export default function BookDetails({ session }) {
     fetchReviews(false) 
   }
 
-  // NEW: Report Review Function
   async function handleFlagReview(reviewId) {
     if (!session) return toast.error("Login to report reviews")
     if (!confirm("Report this review as inappropriate?")) return
@@ -148,7 +162,6 @@ export default function BookDetails({ session }) {
     })
   
     if (error) {
-      // Error 23505 = Unique Violation (Already flagged)
       if (error.code === '23505') toast.error("You already reported this.")
       else toast.error("Error reporting review")
     } else {
@@ -224,8 +237,12 @@ export default function BookDetails({ session }) {
             </span>
             <h1 className="text-4xl md:text-5xl font-bold mt-4 font-serif leading-tight">{book.title}</h1>
             <p className="text-xl text-gray-500 dark:text-gray-400 mt-2">{book.author}</p>
+            
+            {/* CLICKABLE SERIES NAME */}
             {book.series_name && (
-              <p className="text-purple-600 dark:text-purple-400 font-semibold">{book.series_name} Series, Vol {book.series_order}</p>
+              <Link to={`/?search=${book.series_name}`} className="text-purple-600 dark:text-purple-400 font-semibold hover:underline block mt-1">
+                {book.series_name} Series, Vol {book.series_order}
+              </Link>
             )}
           </div>
 
@@ -264,6 +281,31 @@ export default function BookDetails({ session }) {
           </div>
         </div>
       </div>
+
+      {/* --- NEW: SERIES SHELF --- */}
+      {book.series_name && seriesBooks.length > 0 && (
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-serif font-bold text-gray-800 dark:text-white">
+              More in the <Link to={`/?search=${book.series_name}`} className="text-purple-600 hover:underline">{book.series_name}</Link> Series
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {seriesBooks.map(sBook => (
+              <Link key={sBook.id} to={`/book/${sBook.id}`} className="group block">
+                <div className="relative overflow-hidden rounded-lg shadow-md mb-2 aspect-[2/3]">
+                  <img src={sBook.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt={sBook.title} />
+                  <span className="absolute top-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
+                    #{sBook.series_order}
+                  </span>
+                </div>
+                <h4 className="font-bold text-gray-800 dark:text-gray-100 truncate text-sm">{sBook.title}</h4>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* --- RECOMMENDATIONS SECTION --- */}
       {relatedBooks.length > 0 && (
@@ -360,7 +402,7 @@ export default function BookDetails({ session }) {
                     <ThumbsUp className={`w-4 h-4 mr-1 ${isLiked ? 'fill-current' : ''}`} /> {likeCount} Likes
                   </button>
 
-                  {/* NEW: FLAG/REPORT BUTTON */}
+                  {/* FLAG/REPORT BUTTON */}
                   <button 
                     onClick={() => handleFlagReview(review.id)}
                     className="flex items-center text-sm font-medium text-gray-400 hover:text-red-500 transition"
