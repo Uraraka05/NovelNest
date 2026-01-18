@@ -22,7 +22,7 @@ export default function Home({ session }) {
   // Pagination State
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const BOOKS_PER_PAGE = 8
+  const BOOKS_PER_PAGE = 10
 
   useEffect(() => {
     // Reset everything when filters change
@@ -164,7 +164,7 @@ export default function Home({ session }) {
         
         {/* SKELETON LOADING STATE */}
         {loading ? (
-           [...Array(8)].map((_, i) => <BookCardSkeleton key={i} />)
+           [...Array(10)].map((_, i) => <BookCardSkeleton key={i} />)
         ) : books.length > 0 ? (
           books.map((book) => {
             const isBookmarked = bookmarkedIds.has(book.id)
