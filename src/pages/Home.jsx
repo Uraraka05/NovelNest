@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Link } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom' // 1. Updated Import
 import { Search, Filter, Bookmark, BookmarkCheck, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
-import BookCardSkeleton from '../components/BookCardSkeleton' // Import Skeleton
+import BookCardSkeleton from '../components/BookCardSkeleton'
 
 export default function Home({ session }) {
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
   
+  // 2. Initialize Search Params
+  const [searchParams] = useSearchParams()
+  const initialSearch = searchParams.get('search') || ''
+
   // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(initialSearch) // Set initial value from URL
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [sortBy, setSortBy] = useState('newest') 
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
@@ -18,20 +22,17 @@ export default function Home({ session }) {
   // Pagination State
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const BOOKS_PER_PAGE = 10
+  const BOOKS_PER_PAGE = 8
 
   useEffect(() => {
     // Reset everything when filters change
     setPage(0)
-    // Optional: setBooks([]) here if you want to clear the grid immediately on filter change
-    // setBooks([]) 
     setHasMore(true)
     fetchBooks(false)
     if (session) fetchBookmarks()
   }, [session, sortBy, selectedGenre, searchTerm])
 
   async function fetchBooks(isLoadMore = false) {
-    // Only show full skeleton loading on initial fetch or filter change
     if (!isLoadMore) setLoading(true)
     
     const currentPage = isLoadMore ? page : 0
@@ -42,9 +43,9 @@ export default function Home({ session }) {
       .from('novels')
       .select(`*, reviews (rating)`)
     
-    // Search Filter
+    // 3. Updated Search Query (Includes series_name)
     if (searchTerm) {
-      query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%`)
+      query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%,series_name.ilike.%${searchTerm}%`)
     }
 
     // Genre Filter
@@ -55,7 +56,7 @@ export default function Home({ session }) {
     // Sorting Logic
     if (sortBy === 'newest') query = query.order('created_at', { ascending: false })
     else if (sortBy === 'oldest') query = query.order('created_at', { ascending: true })
-    else if (sortBy === 'top_rated') query = query.order('avg_rating', { ascending: false, nullsFirst: false }) // Assuming you have an avg_rating column or view
+    else if (sortBy === 'top_rated') query = query.order('avg_rating', { ascending: false, nullsFirst: false }) 
     else if (sortBy === 'alphabetical') query = query.order('title', { ascending: true })
 
     const { data, error } = await query.range(from, to)
@@ -63,7 +64,7 @@ export default function Home({ session }) {
     if (data) {
       if (data.length < BOOKS_PER_PAGE) setHasMore(false)
 
-      // Calculate Ratings locally if needed
+      // Calculate Ratings locally
       const processed = data.map(book => {
         const totalRating = book.reviews.reduce((sum, r) => sum + r.rating, 0)
         const avgRating = book.reviews.length > 0 
@@ -75,7 +76,6 @@ export default function Home({ session }) {
       // If loading more, append. If new filter/sort, replace.
       setBooks(prev => isLoadMore ? [...prev, ...processed] : processed)
       
-      // Prepare next page index
       setPage(prev => isLoadMore ? prev + 1 : 1)
     }
     setLoading(false)
@@ -124,7 +124,7 @@ export default function Home({ session }) {
             <Search className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Search title, author..." 
+              placeholder="Search title, author, or series..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-colors"
@@ -164,7 +164,7 @@ export default function Home({ session }) {
         
         {/* SKELETON LOADING STATE */}
         {loading ? (
-           [...Array(10)].map((_, i) => <BookCardSkeleton key={i} />)
+           [...Array(8)].map((_, i) => <BookCardSkeleton key={i} />)
         ) : books.length > 0 ? (
           books.map((book) => {
             const isBookmarked = bookmarkedIds.has(book.id)
@@ -192,11 +192,6 @@ export default function Home({ session }) {
                 <div className="p-4 flex-1 flex flex-col">
                   <h3 className="font-bold text-gray-900 dark:text-white truncate">{book.title}</h3>
                   <p className="text-gray-500 dark:text-gray-400 text-sm truncate">{book.author}</p>
-                  {book.series_name && (
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-bold mt-1 truncate">
-                    {book.series_name} #{book.series_order}
-                    </p>
-                  )}
                   
                   <div className="flex items-center mt-2 space-x-2">
                     <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded text-yellow-700 dark:text-yellow-400 text-xs font-bold border border-yellow-100 dark:border-yellow-900">
@@ -205,6 +200,12 @@ export default function Home({ session }) {
                     </div>
                     {book.reviewCount > 0 && <span className="text-xs text-gray-400">({book.reviewCount})</span>}
                   </div>
+
+                  {book.series_name && (
+                    <p className="text-purple-600 dark:text-purple-400 text-xs font-semibold mt-2 truncate">
+                      {book.series_name} #{book.series_order}
+                    </p>
+                  )}
 
                   <div className="mt-auto pt-3">
                     <Link to={`/book/${book.id}`} className="block w-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-center py-2 rounded-lg text-sm font-bold hover:bg-purple-100 dark:hover:bg-purple-900/50 transition">
