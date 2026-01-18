@@ -40,12 +40,14 @@ export default function PDFReader({ fileUrl, bookId, userId, initialPage = 1, on
         user_id: userId, 
         book_id: bookId, 
         current_page: page,
+        total_pages: numPages,
         last_read: new Date() // Updates timestamp
       }, { onConflict: 'user_id, book_id' })
 
     if (error) console.error("Error saving progress:", error)
     setSaving(false)
   }
+
 
   // Handle Page Change
   async function changePage(offset) {
