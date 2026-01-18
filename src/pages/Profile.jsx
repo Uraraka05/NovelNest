@@ -115,14 +115,18 @@ export default function Profile({ session }) {
   }
 
   async function handleLogout() {
+    // 1. Clear Local Storage immediately (The most important part!)
+    localStorage.clear() // Wipes the "Remember me" data
+    
+    // 2. Try to tell Supabase, but don't wait if it fails
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut() 
     } catch (error) {
-      console.error("Logout failed, forcing local cleanup:", error)
-    } finally {
-      navigate('/')
-      window.location.reload()
+      console.warn("Server logout failed, but local session cleared.")
     }
+    
+    // 3. Force Redirect
+    window.location.href = '/'
   }
 
   if (!session) return <div className="p-10 text-center dark:text-white">Please log in.</div>
