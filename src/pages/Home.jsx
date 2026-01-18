@@ -192,6 +192,11 @@ export default function Home({ session }) {
                 <div className="p-4 flex-1 flex flex-col">
                   <h3 className="font-bold text-gray-900 dark:text-white truncate">{book.title}</h3>
                   <p className="text-gray-500 dark:text-gray-400 text-sm truncate">{book.author}</p>
+                  {book.series_name && (
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-bold mt-1 truncate">
+                    {book.series_name} #{book.series_order}
+                    </p>
+                  )}
                   
                   <div className="flex items-center mt-2 space-x-2">
                     <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded text-yellow-700 dark:text-yellow-400 text-xs font-bold border border-yellow-100 dark:border-yellow-900">
