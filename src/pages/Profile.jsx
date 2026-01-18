@@ -115,8 +115,14 @@ export default function Profile({ session }) {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut()
-    navigate('/')
+    try {
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error("Logout failed, forcing local cleanup:", error)
+    } finally {
+      navigate('/')
+      window.location.reload()
+    }
   }
 
   if (!session) return <div className="p-10 text-center dark:text-white">Please log in.</div>
@@ -126,33 +132,38 @@ export default function Profile({ session }) {
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* --- HEADER --- */}
-        <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors">
-          <div className="flex items-center space-x-4">
-            <div className="relative group">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-200 dark:border-purple-700">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-purple-600 dark:text-purple-300">
-                    <User className="w-8 h-8" />
-                  </div>
-                )}
-              </div>
-              <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                <Camera className="w-6 h-6 text-white" />
-                <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={uploading} />
-              </label>
-              {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-full"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Profile</h1>
-              <p className="text-gray-500 dark:text-gray-400">{session.user.email}</p>
-            </div>
+<div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors gap-4">
+  
+  {/* Left Side: Avatar + Info */}
+  <div className="flex flex-col md:flex-row items-center text-center md:text-left space-y-3 md:space-y-0 md:space-x-4">
+    <div className="relative group">
+      <div className="w-16 h-16 rounded-full overflow-hidden bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-200 dark:border-purple-700">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-purple-600 dark:text-purple-300">
+            <User className="w-8 h-8" />
           </div>
-          <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition flex items-center">
-            <LogOut className="w-5 h-5 mr-2" /> Logout
-          </button>
-        </div>
+        )}
+      </div>
+      <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+        <Camera className="w-6 h-6 text-white" />
+        <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={uploading} />
+      </label>
+      {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-full"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>}
+    </div>
+    
+    <div className="min-w-0"> {/* min-w-0 prevents text overflow */}
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Profile</h1>
+      <p className="text-gray-500 dark:text-gray-400 break-all">{session.user.email}</p>
+    </div>
+  </div>
+
+  {/* Right Side: Logout Button */}
+  <button onClick={handleLogout} className="w-full md:w-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition flex items-center justify-center">
+    <LogOut className="w-5 h-5 mr-2" /> Logout
+  </button>
+</div>
 
         {/* --- PERSONAL DETAILS FORM --- */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors">

@@ -10,14 +10,10 @@ export default function Navbar({ session }) {
   const [isDark, setIsDark] = useState(false)
 
   // 👇 SECURITY: Define who the admin is
-  // You can add more emails here if you have multiple admins in the future
   const ADMIN_EMAILS = ['madhumithakarthikeyan2005@gmail.com'] 
-  
-  // Check if current user's email is in the allowed list
   const isAdmin = session && session.user && ADMIN_EMAILS.includes(session.user.email)
 
   useEffect(() => {
-    // Sync theme state on mount
     if (document.documentElement.classList.contains('dark')) {
       setIsDark(true)
     }
@@ -51,7 +47,12 @@ export default function Navbar({ session }) {
   return (
     <>
       <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* CHANGED HERE: 
+            Removed 'max-w-7xl mx-auto' (which limited width).
+            Added 'w-full' (full width) and adjusted padding 'px-6 lg:px-10'.
+        */}
+        <div className="w-full px-6 lg:px-10">
           <div className="flex justify-between h-16">
             
             {/* --- LEFT: LOGO --- */}
@@ -89,7 +90,6 @@ export default function Navbar({ session }) {
                     <span className="whitespace-nowrap">My Library</span>
                   </Link>
 
-                  {/* 👇 ONLY SHOW ADMIN BUTTON IF USER IS ADMIN */}
                   {isAdmin && (
                     <Link to="/admin" className={linkClass('/admin')}>
                       <ShieldCheck className="w-4 h-4" />
@@ -144,7 +144,6 @@ export default function Navbar({ session }) {
                     <Library className="w-5 h-5 inline mr-2" /> My Library
                   </Link>
                   
-                  {/* 👇 ONLY SHOW ADMIN LINK IN MOBILE MENU IF ADMIN */}
                   {isAdmin && (
                     <Link to="/admin" onClick={closeMenu} className={`block ${linkClass('/admin')}`}>
                       <ShieldCheck className="w-5 h-5 inline mr-2" /> Admin Dashboard
