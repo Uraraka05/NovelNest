@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { User, LogOut, Save, Loader2, Calendar, Smile, Trash2, Star, Camera, Lock, Key } from 'lucide-react'
+import { User, LogOut, Save, Loader2, Lock, Key, Camera, Trash2, Star, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Profile({ session }) {
@@ -22,11 +22,16 @@ export default function Profile({ session }) {
   const [nickname, setNickname] = useState('')
   const [dob, setDob] = useState('')
   const [avatarUrl, setAvatarUrl] = useState(null)
+  const [role, setRole] = useState('user') // New: Store User Role
+
+  // Admin Request State
+  const [requestStatus, setRequestStatus] = useState(null)
 
   useEffect(() => {
     if (session) {
       fetchProfile()
       fetchReviews()
+      checkRequestStatus() // New: Check status on load
     }
   }, [session])
 
@@ -37,6 +42,26 @@ export default function Profile({ session }) {
       setNickname(data.nickname || '')
       setDob(data.date_of_birth || '')
       setAvatarUrl(data.avatar_url)
+      setRole(data.role || 'user') // Set Role
+    }
+  }
+
+  // --- NEW: CHECK & REQUEST ADMIN ACCESS ---
+  async function checkRequestStatus() {
+    // Use maybeSingle() to avoid errors if no request exists yet
+    const { data } = await supabase.from('admin_requests').select('status').eq('user_id', session.user.id).maybeSingle()
+    if (data) setRequestStatus(data.status)
+  }
+
+  async function requestAdminAccess() {
+    const { error } = await supabase.from('admin_requests').insert({ user_id: session.user.id })
+    if (!error) {
+      toast.success("Request sent to Super Admin!")
+      setRequestStatus('pending')
+    } else {
+      // Handle duplicate requests gracefully
+      if (error.code === '23505') toast.error("Request already pending.")
+      else toast.error("Error sending request")
     }
   }
 
@@ -53,8 +78,8 @@ export default function Profile({ session }) {
       if (!file) return
 
       const fileExt = file.name.split('.').pop()
-      const fileName = `${session.user.id}-${Math.now}.${fileExt}` // Fix: Math.random logic or Date.now
-      const filePath = `${session.user.id}-${Date.now()}.${fileExt}`
+      const fileName = `${session.user.id}-${Date.now()}.${fileExt}` // Fixed Math.now to Date.now()
+      const filePath = fileName
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
       if (uploadError) throw uploadError
@@ -67,7 +92,8 @@ export default function Profile({ session }) {
 
       setAvatarUrl(publicUrl)
       toast.success('Avatar updated!')
-      setTimeout(() => window.location.reload(), 1000)
+      // Optional: reload to ensure image cache clears, or just rely on state
+      // setTimeout(() => window.location.reload(), 1000) 
 
     } catch (error) {
       toast.error("Error uploading: " + error.message)
@@ -76,7 +102,6 @@ export default function Profile({ session }) {
     }
   }
 
-  // --- NEW: HANDLE PASSWORD UPDATE ---
   async function handlePasswordUpdate(e) {
     e.preventDefault()
     if (newPassword !== confirmPassword) return toast.error("Passwords do not match")
@@ -115,17 +140,12 @@ export default function Profile({ session }) {
   }
 
   async function handleLogout() {
-    // 1. Clear Local Storage immediately (The most important part!)
-    localStorage.clear() // Wipes the "Remember me" data
-    
-    // 2. Try to tell Supabase, but don't wait if it fails
+    localStorage.clear()
     try {
       await supabase.auth.signOut() 
     } catch (error) {
       console.warn("Server logout failed, but local session cleared.")
     }
-    
-    // 3. Force Redirect
     window.location.href = '/'
   }
 
@@ -136,38 +156,38 @@ export default function Profile({ session }) {
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* --- HEADER --- */}
-<div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors gap-4">
-  
-  {/* Left Side: Avatar + Info */}
-  <div className="flex flex-col md:flex-row items-center text-center md:text-left space-y-3 md:space-y-0 md:space-x-4">
-    <div className="relative group">
-      <div className="w-16 h-16 rounded-full overflow-hidden bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-200 dark:border-purple-700">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-purple-600 dark:text-purple-300">
-            <User className="w-8 h-8" />
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors gap-4">
+          <div className="flex flex-col md:flex-row items-center text-center md:text-left space-y-3 md:space-y-0 md:space-x-4">
+            <div className="relative group">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-200 dark:border-purple-700">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-purple-600 dark:text-purple-300">
+                    <User className="w-8 h-8" />
+                  </div>
+                )}
+              </div>
+              <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                <Camera className="w-6 h-6 text-white" />
+                <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={uploading} />
+              </label>
+              {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-full"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>}
+            </div>
+            
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Profile</h1>
+              <p className="text-gray-500 dark:text-gray-400 break-all">{session.user.email}</p>
+              <span className={`text-xs px-2 py-0.5 rounded uppercase font-bold ${role === 'admin' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                {role}
+              </span>
+            </div>
           </div>
-        )}
-      </div>
-      <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-        <Camera className="w-6 h-6 text-white" />
-        <input type="file" accept="image/*" onChange={uploadAvatar} className="hidden" disabled={uploading} />
-      </label>
-      {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-full"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>}
-    </div>
-    
-    <div className="min-w-0"> {/* min-w-0 prevents text overflow */}
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Profile</h1>
-      <p className="text-gray-500 dark:text-gray-400 break-all">{session.user.email}</p>
-    </div>
-  </div>
 
-  {/* Right Side: Logout Button */}
-  <button onClick={handleLogout} className="w-full md:w-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition flex items-center justify-center">
-    <LogOut className="w-5 h-5 mr-2" /> Logout
-  </button>
-</div>
+          <button onClick={handleLogout} className="w-full md:w-auto text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition flex items-center justify-center">
+            <LogOut className="w-5 h-5 mr-2" /> Logout
+          </button>
+        </div>
 
         {/* --- PERSONAL DETAILS FORM --- */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors">
@@ -193,7 +213,38 @@ export default function Profile({ session }) {
           </form>
         </div>
 
-        {/* --- NEW: SECURITY / CHANGE PASSWORD SECTION --- */}
+        {/* --- NEW: AUTHOR ACCESS REQUEST --- */}
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center">
+             <Shield className="w-5 h-5 mr-2 text-purple-600" /> Author Access
+          </h2>
+          {role === 'user' ? (
+            requestStatus === 'pending' ? (
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-lg border border-yellow-100 dark:border-yellow-900/50">
+                <strong>Request Pending:</strong> Your application to become an Author is under review by the Admin.
+              </div>
+            ) : requestStatus === 'rejected' ? (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg border border-red-100 dark:border-red-900/50">
+                <strong>Request Rejected:</strong> Your application was not approved.
+              </div>
+            ) : (
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Want to publish your own novels on NovelNest? Request author privileges to access the Admin Dashboard.
+                </p>
+                <button onClick={requestAdminAccess} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-bold whitespace-nowrap">
+                  Request to become an Author
+                </button>
+              </div>
+            )
+          ) : (
+             <div className="p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg border border-green-100 dark:border-green-900/50">
+               <strong>Access Granted:</strong> You are currently an {role.charAt(0).toUpperCase() + role.slice(1)}. You have full access to the Admin Dashboard.
+             </div>
+          )}
+        </div>
+
+        {/* --- SECURITY / CHANGE PASSWORD SECTION --- */}
         <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-sm border border-transparent dark:border-gray-700 transition-colors">
           <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white flex items-center">
             <Lock className="w-5 h-5 mr-2 text-purple-600" /> Security
