@@ -61,7 +61,7 @@ export default function App() {
         <Route path="/book/:id" element={<BookDetails session={session} />} />
         <Route path="/profile" element={session ? <Profile session={session} /> : <Navigate to="/login" />} />
         <Route path="/my-library" element={session ? <MyLibrary session={session} /> : <Navigate to="/login" />} />
-        <Route path="/admin" element={<AdminRoute session={session}><Admin /></AdminRoute>} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </div>
   )
