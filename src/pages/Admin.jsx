@@ -333,6 +333,8 @@ async function handleDismissFlags(reviewId, flagIds) {
                 <option value="Sci-Fi">Sci-Fi</option>
                 <option value="Mystery">Mystery</option>
                 <option value="Horror">Horror</option>
+                <option value="Non-fiction">Non-fiction</option>
+                <option value="History">History</option>
               </select>
             </div>
             <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Synopsis..." className="w-full p-3 border rounded-lg h-32 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white outline-none focus:ring-2 focus:ring-purple-500" required></textarea>
