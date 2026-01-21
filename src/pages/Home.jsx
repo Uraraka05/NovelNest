@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useSearchParams, Link } from 'react-router-dom' // 1. Updated Import
+import { useSearchParams, Link } from 'react-router-dom'
 import { Search, Filter, Bookmark, BookmarkCheck, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BookCardSkeleton from '../components/BookCardSkeleton'
@@ -9,12 +9,12 @@ export default function Home({ session }) {
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
   
-  // 2. Initialize Search Params
+  // Initialize Search Params
   const [searchParams] = useSearchParams()
   const initialSearch = searchParams.get('search') || ''
 
   // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState(initialSearch) // Set initial value from URL
+  const [searchTerm, setSearchTerm] = useState(initialSearch) 
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [sortBy, setSortBy] = useState('newest') 
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
@@ -43,7 +43,7 @@ export default function Home({ session }) {
       .from('novels')
       .select(`*, reviews (rating)`)
     
-    // 3. Updated Search Query (Includes series_name)
+    // Search Query
     if (searchTerm) {
       query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%,series_name.ilike.%${searchTerm}%`)
     }
@@ -73,9 +73,7 @@ export default function Home({ session }) {
         return { ...book, avgRating, reviewCount: book.reviews.length }
       })
 
-      // If loading more, append. If new filter/sort, replace.
       setBooks(prev => isLoadMore ? [...prev, ...processed] : processed)
-      
       setPage(prev => isLoadMore ? prev + 1 : 1)
     }
     setLoading(false)
@@ -109,7 +107,18 @@ export default function Home({ session }) {
     }
   }
 
-  const genres = ['All', 'Fantasy', 'Romance', 'Thriller', 'Sci-Fi', 'Mystery', 'Horror']
+  // 👇 UPDATED GENRES LIST HERE
+  const genres = [
+    'All', 
+    'Fantasy', 
+    'Romance', 
+    'Thriller', 
+    'Sci-Fi', 
+    'Mystery', 
+    'Horror', 
+    'Non-fiction', 
+    'History'
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 md:p-8 transition-colors duration-300">
