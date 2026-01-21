@@ -274,11 +274,12 @@ export default function BookDetails({ session }) {
               <Share2 />
             </button>
           </div>
-
-          <div>
-            <h3 className="text-lg font-bold mb-2">Synopsis</h3>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{book.description}</p>
-          </div>
+            <div className="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold mb-2 border-b pb-2 border-gray-200 dark:border-gray-700">Synopsis</h3>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+              {book.synopsis || book.description || "No synopsis available for this book."}
+            </p>
+            </div>
         </div>
       </div>
 
