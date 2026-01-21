@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { supabase } from '../lib/supabase' // Import Supabase client
 import { BookOpen, User, LogIn, Sun, Moon, BookPlus, Menu, X, ShieldCheck, Library } from 'lucide-react'
 import RequestModal from './RequestModal'
 
@@ -8,10 +9,24 @@ export default function Navbar({ session }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [isDark, setIsDark] = useState(false)
+  const [role, setRole] = useState(null) // State to store DB role
 
-  // 👇 SECURITY: Define who the admin is
-  const ADMIN_EMAILS = ['madhumithakarthikeyan2005@gmail.com'] 
-  const isAdmin = session && session.user && ADMIN_EMAILS.includes(session.user.email)
+  // Fetch Role on Mount / Session Change
+  useEffect(() => {
+    if (session?.user) {
+      const fetchRole = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        if (data) setRole(data.role)
+      }
+      fetchRole()
+    } else {
+      setRole(null)
+    }
+  }, [session])
 
   useEffect(() => {
     if (document.documentElement.classList.contains('dark')) {
@@ -37,6 +52,9 @@ export default function Navbar({ session }) {
     setIsMobileMenuOpen(false)
   }
 
+  // Helper to check if user has dashboard access
+  const hasDashboardAccess = role === 'author' || role === 'super_admin'
+
   const linkClass = (path) => 
     `flex items-center space-x-2 px-3 py-2 rounded-lg transition font-medium ${
       location.pathname === path 
@@ -47,11 +65,6 @@ export default function Navbar({ session }) {
   return (
     <>
       <nav className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40 transition-colors duration-300">
-        
-        {/* CHANGED HERE: 
-            Removed 'max-w-7xl mx-auto' (which limited width).
-            Added 'w-full' (full width) and adjusted padding 'px-6 lg:px-10'.
-        */}
         <div className="w-full px-6 lg:px-10">
           <div className="flex justify-between h-16">
             
@@ -90,10 +103,11 @@ export default function Navbar({ session }) {
                     <span className="whitespace-nowrap">My Library</span>
                   </Link>
 
-                  {isAdmin && (
+                  {/* DYNAMIC DASHBOARD LINK */}
+                  {hasDashboardAccess && (
                     <Link to="/admin" className={linkClass('/admin')}>
                       <ShieldCheck className="w-4 h-4" />
-                      <span>Admin</span>
+                      <span>Dashboard</span>
                     </Link>
                   )}
                   
@@ -144,9 +158,10 @@ export default function Navbar({ session }) {
                     <Library className="w-5 h-5 inline mr-2" /> My Library
                   </Link>
                   
-                  {isAdmin && (
+                  {/* DYNAMIC MOBILE DASHBOARD LINK */}
+                  {hasDashboardAccess && (
                     <Link to="/admin" onClick={closeMenu} className={`block ${linkClass('/admin')}`}>
-                      <ShieldCheck className="w-5 h-5 inline mr-2" /> Admin Dashboard
+                      <ShieldCheck className="w-5 h-5 inline mr-2" /> Dashboard
                     </Link>
                   )}
 
