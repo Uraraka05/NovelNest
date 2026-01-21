@@ -42,15 +42,17 @@ export default function Home({ session }) {
     let query = supabase
       .from('novels')
       .select(`*, reviews (rating)`)
+      .eq('status', 'published')
     
     // Search Query
     if (searchTerm) {
       query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%,series_name.ilike.%${searchTerm}%`)
     }
 
-    // Genre Filter
+    // ✅ FIXED GENRE FILTER (Use .ilike for partial matching)
     if (selectedGenre !== 'All') {
-      query = query.eq('genre', selectedGenre)
+      // This checks if the genre column CONTAINS the word (e.g. "History")
+      query = query.ilike('genre', `%${selectedGenre}%`)
     }
 
     // Sorting Logic
@@ -107,7 +109,7 @@ export default function Home({ session }) {
     }
   }
 
-  // 👇 UPDATED GENRES LIST HERE
+  // ✅ UPDATED GENRES LIST (Added Non-fiction & History)
   const genres = [
     'All', 
     'Fantasy', 
@@ -117,7 +119,9 @@ export default function Home({ session }) {
     'Mystery', 
     'Horror', 
     'Non-fiction', 
-    'History'
+    'History',
+    'Dark Romance',
+    'Adventure'
   ]
 
   return (
@@ -185,8 +189,9 @@ export default function Home({ session }) {
                 <div className="relative h-64 overflow-hidden">
                   <img src={book.cover_url} alt={book.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                   
+                  {/* Shows Primary Genre Tag */}
                   <span className="absolute top-2 right-2 bg-black/60 text-white text-[10px] uppercase tracking-wider px-2 py-1 rounded backdrop-blur-md">
-                    {book.genre || 'Novel'}
+                    {book.genre ? book.genre.split(',')[0] : 'Novel'}
                   </span>
 
                   <button
