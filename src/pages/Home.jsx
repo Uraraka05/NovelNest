@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom' 
 import { Search, Filter, Bookmark, BookmarkCheck, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BookCardSkeleton from '../components/BookCardSkeleton'
 
 export default function Home({ session }) {
+  const navigate = useNavigate() // ✅ Hook for navigation
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
   
@@ -49,9 +50,8 @@ export default function Home({ session }) {
       query = query.or(`title.ilike.%${searchTerm}%,author.ilike.%${searchTerm}%,series_name.ilike.%${searchTerm}%`)
     }
 
-    // ✅ FIXED GENRE FILTER (Use .ilike for partial matching)
+    // Genre Filter (Partial Match)
     if (selectedGenre !== 'All') {
-      // This checks if the genre column CONTAINS the word (e.g. "History")
       query = query.ilike('genre', `%${selectedGenre}%`)
     }
 
@@ -61,7 +61,7 @@ export default function Home({ session }) {
     else if (sortBy === 'top_rated') query = query.order('avg_rating', { ascending: false, nullsFirst: false }) 
     else if (sortBy === 'alphabetical') query = query.order('title', { ascending: true })
 
-    const { data, error } = await query.range(from, to)
+    const { data } = await query.range(from, to)
 
     if (data) {
       if (data.length < BOOKS_PER_PAGE) setHasMore(false)
@@ -88,7 +88,9 @@ export default function Home({ session }) {
   }
 
   async function toggleBookmark(e, bookId) {
+    e.stopPropagation() // ✅ Prevents clicking the card when bookmarking
     e.preventDefault()
+    
     if (!session) {
       toast.error("Please login to library!")
       return
@@ -109,19 +111,9 @@ export default function Home({ session }) {
     }
   }
 
-  // ✅ UPDATED GENRES LIST (Added Non-fiction & History)
+  // Genres List
   const genres = [
-    'All', 
-    'Fantasy', 
-    'Romance', 
-    'Thriller', 
-    'Sci-Fi', 
-    'Mystery', 
-    'Horror', 
-    'Non-fiction', 
-    'History',
-    'Dark Romance',
-    'Adventure'
+    'All', 'Fantasy', 'Romance', 'Thriller', 'Sci-Fi', 'Mystery', 'Horror', 'Non-fiction', 'History', 'Dark Romance', 'Adventure'
   ]
 
   return (
@@ -183,7 +175,11 @@ export default function Home({ session }) {
             const isBookmarked = bookmarkedIds.has(book.id)
             
             return (
-              <div key={book.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:-translate-y-2 transition duration-300 group relative flex flex-col border border-transparent dark:border-gray-700">
+              <div 
+                key={book.id} 
+                onClick={() => navigate(`/book/${book.id}`)} // ✅ Makes entire card clickable
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:-translate-y-2 transition duration-300 group relative flex flex-col border border-transparent dark:border-gray-700 cursor-pointer"
+              >
                 
                 {/* COVER */}
                 <div className="relative h-64 overflow-hidden">
@@ -222,7 +218,11 @@ export default function Home({ session }) {
                   )}
 
                   <div className="mt-auto pt-3">
-                    <Link to={`/book/${book.id}`} className="block w-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-center py-2 rounded-lg text-sm font-bold hover:bg-purple-100 dark:hover:bg-purple-900/50 transition">
+                    <Link 
+                        to={`/book/${book.id}`} 
+                        onClick={(e) => e.stopPropagation()} // ✅ Prevents double-firing the card click
+                        className="block w-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-center py-2 rounded-lg text-sm font-bold hover:bg-purple-100 dark:hover:bg-purple-900/50 transition"
+                    >
                       View Details
                     </Link>
                   </div>
